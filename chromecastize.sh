@@ -39,7 +39,7 @@ in_array() {
 }
 
 print_help() {
-	echo "Usage: chromecastize.sh [ --mp4 | --mkv ] <videofile1> [ videofile2 ... ]"
+	echo "Usage: chromecastize.sh [ --mp4 | --mkv ] [--aspect=<corrected-aspect-ratio>] <videofile1> [ videofile2 ... ]"
 }
 
 unknown_codec() {
@@ -110,6 +110,10 @@ on_failure() {
 process_file() {
 	local FILENAME="$1"
 
+	if [ "$ASPECT" != "" ]; then
+		SCALE="-vf scale=trunc(ih*$ASPECT/2)*2:ih"
+	fi
+
 	echo "==========="
 	echo "Processing: $FILENAME"
 
@@ -163,7 +167,7 @@ process_file() {
 		if [ "$OUTPUT_GFORMAT" = "ok" ]; then
 			OUTPUT_GFORMAT=$EXTENSION
 		fi
-		$FFMPEG -loglevel error -stats -i "$FILENAME" -map 0 -scodec copy -vcodec "$OUTPUT_VCODEC" -acodec "$OUTPUT_ACODEC" "$FILENAME.$OUTPUT_GFORMAT" && on_success "$FILENAME" || on_failure "$FILENAME"
+		$FFMPEG -loglevel error -stats -i "$FILENAME" -map 0 -scodec copy -vcodec "$OUTPUT_VCODEC" -acodec "$OUTPUT_ACODEC" $SCALE "$FILENAME.$OUTPUT_GFORMAT"&& on_success "$FILENAME" || on_failure "$FILENAME"
 		echo ""
 	fi
 }
@@ -206,6 +210,8 @@ touch $HOME/processed_files
 for FILENAME in "$@"; do
 	if [ "$FILENAME" = "--mp4" ] || [ "$FILENAME" = "--mkv" ]; then
 		OVERRIDE_GFORMAT=`echo "$FILENAME" | sed 's/^--//'`
+	elif [[ $FILENAME =~ --aspect=(.+) ]]; then
+		ASPECT=${BASH_REMATCH[1]}
 	elif ! [ -e "$FILENAME" ]; then
 		echo "File not found ($FILENAME). Skipping..."
 	elif [ -d "$FILENAME" ]; then
