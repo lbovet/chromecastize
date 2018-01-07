@@ -111,7 +111,7 @@ process_file() {
 	local FILENAME="$1"
 
 	if [ "$ASPECT" != "" ]; then
-		SCALE="-vf scale=trunc(ih*$ASPECT/2)*2:ih"
+		SCALE="-vf setdar=$ASPECT"
 	fi
 
 	echo "==========="
