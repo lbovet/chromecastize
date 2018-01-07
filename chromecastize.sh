@@ -111,7 +111,7 @@ process_file() {
 	local FILENAME="$1"
 
 	if [ "$ASPECT" != "" ]; then
-		SCALE="-vf setdar=$ASPECT"
+		SCALE=",setdar=$ASPECT"
 	fi
 
 	echo "==========="
@@ -167,7 +167,9 @@ process_file() {
 		if [ "$OUTPUT_GFORMAT" = "ok" ]; then
 			OUTPUT_GFORMAT=$EXTENSION
 		fi
-		$FFMPEG -loglevel error -stats -i "$FILENAME" -map 0 -scodec copy -vcodec "$OUTPUT_VCODEC" -acodec "$OUTPUT_ACODEC" $SCALE "$FILENAME.$OUTPUT_GFORMAT"&& on_success "$FILENAME" || on_failure "$FILENAME"
+		$FFMPEG -loglevel error -stats -i "$FILENAME" -map 0 -scodec copy -acodec "$OUTPUT_ACODEC" \
+			-vaapi_device /dev/dri/renderD128 -vf 'format=nv12,hwupload'$SCALE -c:v h264_vaapi -qp 22 "$FILENAME.$OUTPUT_GFORMAT" \
+			&& on_success "$FILENAME" || on_failure "$FILENAME"
 		echo ""
 	fi
 }
