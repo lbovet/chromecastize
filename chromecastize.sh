@@ -16,7 +16,7 @@ SUPPORTED_ACODECS=('AAC' 'MPEG Audio' 'Vorbis' 'Ogg' 'Opus')
 UNSUPPORTED_ACODECS=('AC-3' 'DTS' 'PCM')
 
 DEFAULT_VCODEC=h264
-DEFAULT_ACODEC=libvorbis
+DEFAULT_ACODEC=libshine
 DEFAULT_GFORMAT=mkv
 
 #############
@@ -152,11 +152,18 @@ process_file() {
 
 	# test audio codec
 	INPUT_ACODEC=`mediainfo --Inform="Audio;%Format%\n" "$FILENAME" 2> /dev/null | head -n1`
+	CHANNELS=`mediainfo --Inform="Audio;%Channel(s)_Original%\n" "$FILENAME" 2> /dev/null | head -n1`
 	if is_supported_acodec "$INPUT_ACODEC"; then
 		OUTPUT_ACODEC="copy"
 	else
 		OUTPUT_ACODEC="$DEFAULT_ACODEC"
 	fi
+
+	if [ $CHANNELS != 2 ]; then
+		OUTPUT_ACODEC="$DEFAULT_ACODEC"
+		ACODEC_OPTS="-vol 425 -af pan=stereo|FL=0.9*FC+0.65*FL+0.65*BL+0.5*LFE|FR=0.9*FC+0.65*FR+0.65*BR+0.5*LFE"
+	fi
+
 	echo "- audio: $INPUT_ACODEC -> $OUTPUT_ACODEC"
 
 	if [ "$OUTPUT_VCODEC" = "copy" ] && [ "$OUTPUT_ACODEC" = "copy" ] && [ "$OUTPUT_GFORMAT" = "ok" ]; then
@@ -167,8 +174,12 @@ process_file() {
 		if [ "$OUTPUT_GFORMAT" = "ok" ]; then
 			OUTPUT_GFORMAT=$EXTENSION
 		fi
-		$FFMPEG -loglevel error -stats -i "$FILENAME" -map 0 -scodec copy -acodec "$OUTPUT_ACODEC" \
-			-vaapi_device /dev/dri/renderD128 -vf 'format=nv12,hwupload'$SCALE -c:v h264_vaapi -qp 22 "$FILENAME.$OUTPUT_GFORMAT" \
+
+
+#               $FFMPEG -loglevel error -stats -i "$FILENAME" -map 0 -scodec copy -acodec "$OUTPUT_ACODEC" \
+#                        -vaapi_device /dev/dri/renderD128 -vf 'format=nv12,hwupload'$SCALE -c:v h264_vaapi -qp 22 "$FILENAME.$OUTPUT_GFORMAT" \
+		$FFMPEG -loglevel error -stats -i "$FILENAME" -map 0 -scodec copy -acodec "$OUTPUT_ACODEC" $ACODEC_OPTS \
+			-threads 4 -vaapi_device /dev/dri/renderD128 -vf 'format=nv12,hwupload'$SCALE -c:v h264_vaapi -qp 22 "/mnt/sharebox/media/movies/$FILENAME.$OUTPUT_GFORMAT" \
 			&& on_success "$FILENAME" || on_failure "$FILENAME"
 		echo ""
 	fi
