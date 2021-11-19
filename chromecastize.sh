@@ -7,7 +7,7 @@ HOME=~/.chromecastize
 SUPPORTED_EXTENSIONS=('mkv' 'avi' 'mp4' '3gp' 'mov' 'mpg' 'mpeg' 'qt' 'wmv' 'm2ts' 'flv')
 
 SUPPORTED_GFORMATS=('MPEG-4' 'Matroska')
-UNSUPPORTED_GFORMATS=('BDAV' 'AVI' 'Flash Video')
+UNSUPPORTED_GFORMATS=('BDAV' 'AVI' 'Flash Video' 'Ogg')
 
 SUPPORTED_VCODECS=('AVC')
 UNSUPPORTED_VCODECS=('MPEG-4 Visual' 'xvid' 'MPEG Video', 'HEVC')
@@ -52,7 +52,7 @@ is_supported_gformat() {
 	elif in_array "$1" "${UNSUPPORTED_GFORMATS[@]}"; then
 		return 1
 	else
-		unknown_codec "$1"
+		unknown_codec "$1 g"
 		exit 1
 	fi
 }
@@ -63,7 +63,7 @@ is_supported_vcodec() {
 	elif in_array "$1" "${UNSUPPORTED_VCODECS[@]}"; then
 		return 1
 	else
-		unknown_codec "$1"
+		unknown_codec "$1 v"
 		exit 1
 	fi
 }
@@ -74,7 +74,7 @@ is_supported_acodec() {
 	elif in_array "$1" "${UNSUPPORTED_ACODECS[@]}"; then
 		return 1
 	else
-		unknown_codec "$1"
+		unknown_codec "$1 a"
 		exit 1
 	fi
 }
@@ -153,13 +153,17 @@ process_file() {
 	# test audio codec
 	INPUT_ACODEC=`mediainfo --Inform="Audio;%Format%\n" "$FILENAME" 2> /dev/null | head -n1`
 	CHANNELS=`mediainfo --Inform="Audio;%Channel(s)_Original%\n" "$FILENAME" 2> /dev/null | head -n1`
+	if [ "$CHANNELS" != "" ]; then
+		CHANNELS=`mediainfo --Inform="Audio;%Channel(s)%\n" "$FILENAME" 2> /dev/null | head -n1`
+	fi
+
 	if is_supported_acodec "$INPUT_ACODEC"; then
 		OUTPUT_ACODEC="copy"
 	else
 		OUTPUT_ACODEC="$DEFAULT_ACODEC"
 	fi
 
-	if [ $CHANNELS != 2 ]; then
+	if [ "$CHANNELS" != "2" ]; then
 		OUTPUT_ACODEC="$DEFAULT_ACODEC"
 		ACODEC_OPTS="-vol 425 -af pan=stereo|FL=0.9*FC+0.65*FL+0.65*BL+0.5*LFE|FR=0.9*FC+0.65*FR+0.65*BR+0.5*LFE"
 	fi
